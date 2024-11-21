@@ -1,6 +1,6 @@
 @font-face {
-  font-family: Comic Sans MS;
-  src: url(/fonts/Comic\ Sans\ MS.ttf);
+  font-family: Terminus;
+  src: url(/fonts/Terminus.ttf);
 }
 
 body {
@@ -34,7 +34,7 @@ body {
 	width: 100%;
   height: 1px;
   font-size: 64pt;
-  font-family: Comic Sans MS;
+  font-family: Terminus;
   text-align: center;
 }
 .text-border{
