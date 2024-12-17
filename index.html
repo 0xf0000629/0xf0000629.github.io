@@ -13,11 +13,13 @@
 		<div class="button" id="yo"></div>
 		</div>
 		<script>
-			const clicknoise = document.getElementById("click");
+			const clicknoise = [document.getElementById("click"), document.getElementById("click"),document.getElementById("click"),document.getElementById("click"),document.getElementById("click")];
+
 			const counterElement = document.getElementById('cntr');
 			async function glitchEffect(time) {
-				clicknoise.currentTime = 0; // Rewind to start if already playing
-            	clicknoise.play();
+				let clickid = Number(counterElement.innerHTML);
+				clicknoise[clickid % 5].currentTime = 0; // Rewind to start if already playing
+            	clicknoise[clickid % 5].play();
 				for (let i=0;i<time/50;i++){
 					counterElement.style.transform = `translate(${Math.random() * 5 - 2.5}px, ${Math.random() * 5 - 2.5}px)`;
 					await new Promise((resolve) => setTimeout(resolve, 10));
