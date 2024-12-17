@@ -26,7 +26,7 @@
 			const button = document.getElementById('yo');
 			let counterValue = 0;
 			if (localStorage.getItem("counter") !== null){
-				counterValue = localStorage.getItem("counter")
+				counterValue = localStorage.getItem("counter");
 				counterElement.innerHTML = counterValue;
 			}
 			button.addEventListener('click', () => {
@@ -35,6 +35,20 @@
 				localStorage.setItem("counter", counterValue);
 				glitchEffect(500);
 			});
+			async function anticheat(){
+				while (true){
+					let test1 = Number(counterElement.innerHTML);
+					await new Promise((resolve) => setTimeout(resolve, 10));
+					let test2 = Number(counterElement.innerHTML);
+					if (Math.abs(test2 - test1) > 10){
+						alert("nuh-uh!");
+						counterElement.innerHTML = counterValue;
+						localStorage.setItem("counter", counterValue);
+					}
+
+				}
+			}
+			anticheat();
 		</script>
     </body>
 </html>
