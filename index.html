@@ -1,40 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MY COOL PAGE</title>
+    <title>■</title>
     <meta name="description" content="Our first page">
     <meta name="keywords" content="html tutorial template">
 	<link rel="stylesheet" href="stylesheets/parallax.css">
 </head>
     <body>
-		<div id="para" class="parallax">
-		<div class="parallax-layer canv"></div>
-		<!--layer 1 will be the bottom layer, layer 3 will be the top layer-->
+		<audio id="click" src="sounds/hitHurt.wav" preload="auto"></audio>
+		<div class="canv">
+		<div class="block" id="cntr">0</div>
+		<div class="button" id="yo"></div>
 		</div>
-		 <script>
-			let i=0.95;
-			let j=750;
-			for (i=0.95;i>0;i-=0.05){
-				for (let k = 0;k<30;k++){
-					let spin = Math.random() * 360;
-					let x = Math.random() * 1920;
-					let y = Math.random() * 4080;
-					
-					document.getElementById("para").innerHTML += "<div class='parallax-layer block" + 
-					"' style='top:" + (y) + 
-					"px;left:" + (x-960) + 
-					"px;transform:translateZ(" + (-i) + 
-					"px) rotate(" + spin +
-					"deg);opacity:" + (1.0-i)*(1.0-i) + 
-					"'>@</div>";
+		<script>
+			const clicknoise = document.getElementById("click");
+			const counterElement = document.getElementById('cntr');
+			async function glitchEffect(time) {
+				clicknoise.currentTime = 0; // Rewind to start if already playing
+            	clicknoise.play();
+				for (let i=0;i<time/50;i++){
+					counterElement.style.transform = `translate(${Math.random() * 5 - 2.5}px, ${Math.random() * 5 - 2.5}px)`;
+					await new Promise((resolve) => setTimeout(resolve, 10));
 				}
 			}
-			i=0;
-			document.getElementById("para").innerHTML += "<div class='parallax-layer block text-border" + 
-				"' style='top:" + (j) + 
-				"px;transform:translateZ(" + (-i) + 
-				"px);opacity:" + (1.0-i)*(1.0-i) + 
-				";color:red;'>WELCOME TO MY PAGE</div>";
-		</script> 
+			const button = document.getElementById('yo');
+			let counterValue = 0;
+			if (localStorage.getItem("counter") !== null){
+				counterValue = localStorage.getItem("counter")
+				counterElement.innerHTML = counterValue;
+			}
+			button.addEventListener('click', () => {
+				counterValue++;
+				counterElement.innerHTML = counterValue;
+				localStorage.setItem("counter", counterValue);
+				glitchEffect(500);
+			});
+		</script>
     </body>
 </html>
