@@ -1,56 +1,196 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>■</title>
-    <meta name="description" content="■█■█■█■█■█■█■█■">
-    <meta name="keywords" content="html tutorial template">
-	<link rel="stylesheet" href="stylesheets/parallax.css">
+<meta charset="UTF-8">
+<title>■</title>
+
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: white;
+  display: flex;
+  align-items: center;   /* vertical centering */
+  justify-content: center; /* horizontal centering */
+}
+
+#screen {
+  font-family: monospace;
+  line-height: 1;
+  white-space: pre;
+  color: #000000;
+}
+</style>
 </head>
-    <body>
-		<audio id="click" src="sounds/hitHurt.wav" preload="auto"></audio>
-		<div class="canv">
-		<div class="block" id="cntr">0</div>
-		<div class="button" id="yo"></div>
-		</div>
-		<script>
-			const clicknoise = [document.getElementById("click"), document.getElementById("click"),document.getElementById("click"),document.getElementById("click"),document.getElementById("click")];
+<body>
 
-			const counterElement = document.getElementById('cntr');
-			async function glitchEffect(time) {
-				let clickid = Number(counterElement.innerHTML);
-				clicknoise[clickid % 5].currentTime = 0; // Rewind to start if already playing
-            	clicknoise[clickid % 5].play();
-				for (let i=0;i<time/50;i++){
-					counterElement.style.transform = `translate(${Math.random() * 5 - 2.5}px, ${Math.random() * 5 - 2.5}px)`;
-					await new Promise((resolve) => setTimeout(resolve, 10));
-				}
-			}
-			const button = document.getElementById('yo');
-			let counterValue = 0;
-			if (localStorage.getItem("counter") !== null){
-				counterValue = localStorage.getItem("counter");
-				counterElement.innerHTML = counterValue;
-			}
-			button.addEventListener('click', () => {
-				counterValue++;
-				counterElement.innerHTML = counterValue;
-				localStorage.setItem("counter", counterValue);
-				glitchEffect(500);
-			});
-			async function anticheat(){
-				while (true){
-					let test1 = Number(counterElement.innerHTML);
-					await new Promise((resolve) => setTimeout(resolve, 10));
-					let test2 = Number(counterElement.innerHTML);
-					if (Math.abs(test2 - test1) > 10){
-						alert("nuh-uh!");
-						counterElement.innerHTML = counterValue;
-						localStorage.setItem("counter", counterValue);
-					}
+<pre id="screen"></pre>
 
-				}
+<audio id="noise" src="sounds/hitHurt.wav"></audio>
+
+<script>
+const screen = document.getElementById("screen");
+
+let cols = 0;
+let rows = 0;
+let charWidth = 0;
+let charHeight = 0;
+let mcX = 0;
+let mcY = 0;
+let boing = 0;
+
+let lastTime = 0;
+const targetFPS = 60;
+const frameDuration = 1000 / targetFPS;
+let currentFPS = 0;
+
+function playNoise() {
+  const audio = document.getElementById("noise");
+  audio.currentTime = 0; // start from the beginning
+  audio.play();
+}
+
+function Particle(texture, x, y, dx, dy, ddx, ddy, lifetime, type) {
+  this.texture = texture;  // string or character representing the particle
+  this.x = x;              // position
+  this.y = y;
+  this.dx = dx;            // velocity
+  this.dy = dy;
+  this.ddx = ddx;          // acceleration
+  this.ddy = ddy;
+  this.lifetime = lifetime; // remaining lifetime in frames
+  this.type = type;        // can be a string or integer to differentiate behavior
+}
+
+const NUM_PARTICLES = 1024;
+const particles = new Array(NUM_PARTICLES);
+
+for (let i = 0; i < NUM_PARTICLES; i++) {
+  particles[i] = new Particle(
+    ' ',
+    0, 0,
+    0, 0,
+    0, 0,
+    0,
+    -1
+  );
+}
+
+screen.addEventListener("click", (e) => {
+});
+screen.addEventListener("mousemove", (e) => {
+  const rect = screen.getBoundingClientRect();
+  const x = e.clientX - rect.left; // x relative to the grid
+  const y = e.clientY - rect.top;  // y relative to the grid
+
+  mcX = Math.floor(x / charWidth);
+  mcY = Math.floor(y / charHeight);
+});
+
+function measureChar() {
+	const test = document.createElement("span");
+	test.textContent = "M";
+	test.style.display = "inline-block";
+	screen.appendChild(test);
+
+	const rect = test.getBoundingClientRect();
+	screen.removeChild(test);
+
+	return { width: rect.width, height: rect.height };
+}
+
+function resize() {
+	const charSize = measureChar();
+	charWidth = charSize.width;
+	charHeight = charSize.height;
+
+	// compute how many full chars fit
+	cols = Math.floor(window.innerWidth / charWidth);
+	rows = Math.floor(window.innerHeight / charHeight);
+}
+
+function physics(){
+	for (let i = 0;i<NUM_PARTICLES;i++){
+		if (particles[i].type != -1){
+			let prevX = Number(particles[i].x);
+			particles[i].dx += particles[i].ddx;
+			particles[i].dy += particles[i].ddy;
+			particles[i].x += particles[i].dx;
+			particles[i].y += particles[i].dy;
+			particles[i].lifetime--;
+			if (particles[i].lifetime == 0) particles[i].type = -1;
+
+			if (particles[i].x >= mcX && prevX <= mcX && Math.floor(particles[i].y) >= mcY-2 && Math.floor(particles[i].y) <= mcY+2){
+				playNoise();
+				particles[i].dx = -(particles[i].dx/2.0);
+				particles[i].dy = Math.random()*1-0.5;
+				particles[i].ddy = 0.125;
 			}
-			anticheat();
-		</script>
-    </body>
+		}
+	}
+}
+
+function render() {
+  	let frame = "";
+
+
+	let buffer = Array.from({length: rows}, () => Array(cols).fill(' '));
+
+	let fpsstring = String(currentFPS);
+	buffer[0][0] = fpsstring[0];
+	buffer[0][1] = fpsstring[1];
+
+	let used = 0;
+	for (let i=0;i<NUM_PARTICLES;i++){
+		if (particles[i].type != -1){
+			if (particles[i].x >= 0 && particles[i].x < cols)
+			if (particles[i].y >= 0 && particles[i].y < rows)
+			buffer[Math.floor(particles[i].y)][Math.floor(particles[i].x)] = particles[i].texture;
+			used++;
+		}
+	}
+
+	let usedstring = String(used);
+	buffer[1][0] = usedstring[0];
+	buffer[1][1] = usedstring[1];
+	buffer[1][2] = usedstring[2];
+
+	if (mcX >= 0 && mcX < cols)
+	if (mcY >= 2 && mcY < rows-2){
+		buffer[mcY-2][mcX] = '%';
+		buffer[mcY-1][mcX] = '%';
+		buffer[mcY][mcX] = '%';
+		buffer[mcY+1][mcX] = '%';
+		buffer[mcY+2][mcX] = '%';
+	}
+
+	frame = buffer.map(row => row.join("")).join("\n");
+	screen.textContent = frame;
+	screen.textContent = frame;
+}
+
+function nextfree(){
+	for (let i=0;i<NUM_PARTICLES;i++){
+		if (particles[i].type == -1) return i;
+	}
+	return -1;
+}
+
+function update(timestamp) {
+  if (timestamp - lastTime >= frameDuration) {
+	currentFPS = 1000/(timestamp-lastTime);
+    lastTime = timestamp;
+	let nf = nextfree();
+	if (nf != -1) particles[nf] = new Particle('■', 0, Math.random()*rows, Math.random()*3+3, 0, 0, 0, 200, 1);
+	resize();
+	physics();
+    render();
+  }
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+
+</body>
 </html>
