@@ -6,6 +6,7 @@
 
 <style>
 html, body {
+	user-select: none; 
   margin: 0;
   height: 100%;
   background: white;
@@ -26,7 +27,17 @@ html, body {
 
 <pre id="screen"></pre>
 
-<audio id="noise" src="sounds/hitHurt.wav"></audio>
+<audio id="noise0" src="sounds/click.wav"></audio>
+<audio id="noise1" src="sounds/click.wav"></audio>
+<audio id="noise2" src="sounds/click.wav"></audio>
+<audio id="noise3" src="sounds/click.wav"></audio>
+<audio id="noise4" src="sounds/click.wav"></audio>
+<audio id="noise5" src="sounds/click.wav"></audio>
+<audio id="noise6" src="sounds/click.wav"></audio>
+<audio id="noise7" src="sounds/click.wav"></audio>
+<audio id="noise8" src="sounds/click.wav"></audio>
+<audio id="noise9" src="sounds/click.wav"></audio>
+
 
 <script>
 const screen = document.getElementById("screen");
@@ -37,17 +48,20 @@ let charWidth = 0;
 let charHeight = 0;
 let mcX = 0;
 let mcY = 0;
+let mcS = 0;
 let boing = 0;
 
 let lastTime = 0;
 const targetFPS = 60;
 const frameDuration = 1000 / targetFPS;
 let currentFPS = 0;
+let nextchannel = 0;
 
 function playNoise() {
-  const audio = document.getElementById("noise");
+  const audio = document.getElementById("noise"+nextchannel);
   audio.currentTime = 0; // start from the beginning
   audio.play();
+	nextchannel = (nextchannel+1)%6;
 }
 
 function Particle(texture, x, y, dx, dy, ddx, ddy, lifetime, type) {
@@ -59,7 +73,7 @@ function Particle(texture, x, y, dx, dy, ddx, ddy, lifetime, type) {
   this.ddx = ddx;          // acceleration
   this.ddy = ddy;
   this.lifetime = lifetime; // remaining lifetime in frames
-  this.type = type;        // can be a string or integer to differentiate behavior
+  this.type = type;
 }
 
 const NUM_PARTICLES = 1024;
@@ -75,9 +89,6 @@ for (let i = 0; i < NUM_PARTICLES; i++) {
     -1
   );
 }
-
-screen.addEventListener("click", (e) => {
-});
 screen.addEventListener("mousemove", (e) => {
   const rect = screen.getBoundingClientRect();
   const x = e.clientX - rect.left; // x relative to the grid
@@ -113,6 +124,7 @@ function physics(){
 	for (let i = 0;i<NUM_PARTICLES;i++){
 		if (particles[i].type != -1){
 			let prevX = Number(particles[i].x);
+			let prevY = Number(particles[i].y);
 			particles[i].dx += particles[i].ddx;
 			particles[i].dy += particles[i].ddy;
 			particles[i].x += particles[i].dx;
@@ -120,11 +132,13 @@ function physics(){
 			particles[i].lifetime--;
 			if (particles[i].lifetime == 0) particles[i].type = -1;
 
-			if (particles[i].x >= mcX && prevX <= mcX && Math.floor(particles[i].y) >= mcY-2 && Math.floor(particles[i].y) <= mcY+2){
+			if (particles[i].x >= cols && prevX < cols || particles[i].x < 0 && prevX >= 0){
 				playNoise();
-				particles[i].dx = -(particles[i].dx/2.0);
-				particles[i].dy = Math.random()*1-0.5;
-				particles[i].ddy = 0.125;
+				particles[i].dx = -(particles[i].dx);
+			}
+			if (particles[i].y < 0 && prevY >= 0 || particles[i].y >= rows && prevY < rows){
+				playNoise();
+				particles[i].dy = -(particles[i].dy);
 			}
 		}
 	}
@@ -156,13 +170,11 @@ function render() {
 	buffer[1][2] = usedstring[2];
 
 	if (mcX >= 0 && mcX < cols)
-	if (mcY >= 2 && mcY < rows-2){
-		buffer[mcY-2][mcX] = '%';
-		buffer[mcY-1][mcX] = '%';
+	if (mcY >= 0 && mcY < rows){
 		buffer[mcY][mcX] = '%';
-		buffer[mcY+1][mcX] = '%';
-		buffer[mcY+2][mcX] = '%';
 	}
+
+	buffer[Math.floor(rows/2)][Math.floor(cols/2)] = '@';
 
 	frame = buffer.map(row => row.join("")).join("\n");
 	screen.textContent = frame;
@@ -176,12 +188,27 @@ function nextfree(){
 	return -1;
 }
 
+window.addEventListener("mousedown", (e) => {
+  mcS = 1;
+});
+
+window.addEventListener("mouseup", (e) => {
+  mcS = 0;
+});
+
+let place = 0;
 function update(timestamp) {
   if (timestamp - lastTime >= frameDuration) {
 	currentFPS = 1000/(timestamp-lastTime);
     lastTime = timestamp;
-	let nf = nextfree();
-	if (nf != -1) particles[nf] = new Particle('■', 0, Math.random()*rows, Math.random()*3+3, 0, 0, 0, 200, 1);
+	if (mcS == 1){
+		if (place > 4){
+			place = 0;
+			let nf = nextfree();
+			if (nf != -1) particles[nf] = new Particle('■', cols/2, rows/2, -(cols/2 - mcX)/20.0, -(rows/2 - mcY)/20.0, 0, 0, 200, 1);
+		}
+		else place++;
+	}
 	resize();
 	physics();
     render();
