@@ -9,7 +9,7 @@ html, body {
 	user-select: none; 
   margin: 0;
   height: 100%;
-  background: white;
+  background: #FFFFFF;
   display: flex;
   align-items: center;   /* vertical centering */
   justify-content: center; /* horizontal centering */
@@ -26,17 +26,9 @@ html, body {
 <body>
 
 <pre id="screen"></pre>
-
-<audio id="noise0" src="sounds/hitHurt.wav"></audio>
+<audio id="noise0" src="sounds/blipSelect.wav"></audio>
 <audio id="noise1" src="sounds/hitHurt.wav"></audio>
-<audio id="noise2" src="sounds/hitHurt.wav"></audio>
-<audio id="noise3" src="sounds/hitHurt.wav"></audio>
-<audio id="noise4" src="sounds/hitHurt.wav"></audio>
-<audio id="noise5" src="sounds/hitHurt.wav"></audio>
-<audio id="noise6" src="sounds/hitHurt.wav"></audio>
-<audio id="noise7" src="sounds/hitHurt.wav"></audio>
-<audio id="noise8" src="sounds/hitHurt.wav"></audio>
-<audio id="noise9" src="sounds/hitHurt.wav"></audio>
+<audio id="noise2" src="sounds/powerUp.wav"></audio>
 
 
 <script>
@@ -51,51 +43,48 @@ let mcY = 0;
 let mcS = 0;
 let boing = 0;
 
+let player = {x: 1.5, y: 1.5, angle: 0};
+const FOV = Math.PI / 3;
+const maxDistance = 12;
+const light = " .,:;xwXW&@"
+
 let lastTime = 0;
 const targetFPS = 60;
 const frameDuration = 1000 / targetFPS;
 let currentFPS = 0;
 let nextchannel = 0;
 
-function playNoise() {
-  const audio = document.getElementById("noise"+nextchannel);
-  audio.currentTime = 0; // start from the beginning
+function playMove() {
+  const audio = document.getElementById("noise1");
+  audio.currentTime = 0;
   audio.play();
-	nextchannel = (nextchannel+1)%6;
+}
+function playFail() {
+  const audio = document.getElementById("noise0");
+  audio.currentTime = 0;
+  audio.play();
+}
+function playWin() {
+  const audio = document.getElementById("noise2");
+  audio.currentTime = 0;
+  audio.play();
 }
 
-function Particle(texture, x, y, dx, dy, ddx, ddy, lifetime, type) {
-  this.texture = texture;  // string or character representing the particle
-  this.x = x;              // position
-  this.y = y;
-  this.dx = dx;            // velocity
-  this.dy = dy;
-  this.ddx = ddx;          // acceleration
-  this.ddy = ddy;
-  this.lifetime = lifetime; // remaining lifetime in frames
-  this.type = type;
+function normalizeAngle(angle) {
+  const TWO_PI = Math.PI * 2;
+  angle = angle % TWO_PI;
+  if (angle < 0) angle += TWO_PI;
+  return angle;
 }
 
-const NUM_PARTICLES = 1024;
-const particles = new Array(NUM_PARTICLES);
-
-for (let i = 0; i < NUM_PARTICLES; i++) {
-  particles[i] = new Particle(
-    ' ',
-    0, 0,
-    0, 0,
-    0, 0,
-    0,
-    -1
-  );
-}
 screen.addEventListener("mousemove", (e) => {
   const rect = screen.getBoundingClientRect();
-  const x = e.clientX - rect.left; // x relative to the grid
-  const y = e.clientY - rect.top;  // y relative to the grid
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
 
   mcX = Math.floor(x / charWidth);
   mcY = Math.floor(y / charHeight);
+  player.angle = normalizeAngle(mcX/cols*Math.PI*4);
 });
 
 function measureChar() {
@@ -121,74 +110,183 @@ function resize() {
 }
 
 function physics(){
-	for (let i = 0;i<NUM_PARTICLES;i++){
-		if (particles[i].type != -1){
-			let prevX = Number(particles[i].x);
-			let prevY = Number(particles[i].y);
-			particles[i].dx += particles[i].ddx;
-			particles[i].dy += particles[i].ddy;
-			particles[i].x += particles[i].dx;
-			particles[i].y += particles[i].dy;
-			particles[i].lifetime--;
-			if (particles[i].lifetime == 0) particles[i].type = -1;
+	
+}
 
-			if (particles[i].x >= cols && prevX < cols || particles[i].x < 0 && prevX >= 0){
-				playNoise();
-				particles[i].dx = -(particles[i].dx);
-			}
-			if (particles[i].y < 0 && prevY >= 0 || particles[i].y >= rows && prevY < rows){
-				playNoise();
-				particles[i].dy = -(particles[i].dy);
-			}
+let path = [{x:0,y:0}];
+let curr = {x:0, y:0};
+let iterate = 500;
+while (iterate > 0){
+	let xoff = Math.floor((Math.floor(Math.random()*2)-0.5)*2);
+	let yoff = Math.floor((Math.floor(Math.random()*2)-0.5)*2);
+	let pick = Math.floor(Math.random()*2);
+	if (pick == 0){
+		let newc = {x:curr.x+xoff, y:curr.y};
+		let test = 0;
+		for (let i=0;i<path.length;i++){
+			if (path[i].x == newc.x && path[i].y == newc.y) test = 1;
 		}
+		if (test == 0) {path.push(newc); curr = newc};
 	}
+	if (pick == 1){
+		let newc = {x:curr.x, y:curr.y+yoff};
+		let test = 0;
+		for (let i=0;i<path.length;i++){
+			if (path[i].x == newc.x && path[i].y == newc.y) test = 1;
+		}
+		if (test == 0) {path.push(newc); curr = newc};
+	}
+	iterate--;
+}
+let minc = {x:0,y:0};
+for (let i=0;i<path.length;i++){
+	if (path[i].x < minc.x) minc.x = path[i].x;
+	if (path[i].y < minc.y) minc.y = path[i].y; 
+}
+for (let i=0;i<path.length;i++){
+	path[i].x -= minc.x;
+	path[i].y -= minc.y;
+}
+player.x = -minc.x*2+1.5;
+player.y = -minc.y*2+1.5;
+
+let maxc = {x:0,y:0};
+for (let i=0;i<path.length;i++){
+	if (path[i].x > maxc.x) maxc.x = path[i].x;
+	if (path[i].y > maxc.y) maxc.y = path[i].y; 
+}
+let mapsizeX = maxc.x*2+3;
+let mapsizeY = maxc.y*2+3;
+
+let map = Array.from({length: mapsizeY}, () => Array(mapsizeX).fill(0));
+for (let i=0;i<mapsizeY;i+=2){
+	for (let j=0;j<mapsizeX;j+=2)
+	map[i][j] = 1;
+}
+/*for (let i=0;i<mapsizeY-1;i+=2){
+	for (let j=1;j<mapsizeX-1;j+=2)
+	map[i][j] = Math.floor(Math.random()*1)+1;
+}
+for (let i=1;i<mapsizeY-1;i+=2){
+	for (let j=0;j<mapsizeX-1;j+=2)
+	map[i][j] = Math.floor(Math.random()*1)+1;
+}*/
+for (let i=0;i<mapsizeY;i++){
+	for (let j=0;j<mapsizeX;j++)
+	if (Math.floor(Math.random()*3)>0)
+	map[i][j] = 1;
+	else
+	map[i][j] = 0;
+}
+for (let i=0;i<mapsizeY;i++){
+	map[i][mapsizeX-1] = 1;
+	map[i][0] = 1;
+}
+for (let i=0;i<mapsizeX;i++){
+	map[0][i] = 1;
+	map[mapsizeY-1][i] = 1;
+}
+for (let i=0;i<path.length-1;i++){
+	map[path[i].y*2+1][path[i].x*2+1] = 0;
+	map[path[i].y+path[i+1].y+1][path[i].x+path[i+1].x+1] = 0;
+}
+map[path[path.length-1].y*2+1][path[path.length-1].x*2+1] = 3;
+
+function detectDirection(angle) {
+  const tolerance = 0.2; // radians (~5.7°)
+  angle = normalizeAngle(angle);
+
+  if (Math.abs(angle - 0) < tolerance || Math.abs(angle - 2*Math.PI) < tolerance) {
+    return "right";
+  } else if (Math.abs(angle - Math.PI/2) < tolerance) {
+    return "up   ";
+  } else if (Math.abs(angle - Math.PI) < tolerance) {
+    return "left ";
+  } else if (Math.abs(angle - 3*Math.PI/2) < tolerance) {
+    return "down ";
+  } else {
+    return "     ";
+  }
 }
 
 function render() {
   	let frame = "";
 
-
 	let buffer = Array.from({length: rows}, () => Array(cols).fill(' '));
-
-	let fpsstring = String(currentFPS);
-	buffer[0][0] = fpsstring[0];
-	buffer[0][1] = fpsstring[1];
-
-	let used = 0;
-	for (let i=0;i<NUM_PARTICLES;i++){
-		if (particles[i].type != -1){
-			if (particles[i].x >= 0 && particles[i].x < cols)
-			if (particles[i].y >= 0 && particles[i].y < rows)
-			buffer[Math.floor(particles[i].y)][Math.floor(particles[i].x)] = particles[i].texture;
-			used++;
-		}
-	}
-
-	let usedstring = String(used);
-	buffer[1][0] = usedstring[0];
-	buffer[1][1] = usedstring[1];
-	buffer[1][2] = usedstring[2];
 
 	if (mcX >= 0 && mcX < cols)
 	if (mcY >= 0 && mcY < rows){
 		buffer[mcY][mcX] = '%';
 	}
 
-	buffer[Math.floor(rows/2)][Math.floor(cols/2)] = '@';
+	for (let col = 0; col < cols; col++) {
+		const rayAngle = player.angle - FOV/2 + (col / cols) * FOV;
+		let distance = 0;
+		let hit = false;
+		while (!hit && distance < maxDistance) {
+			const testX = player.x + Math.cos(rayAngle) * distance;
+			const testY = player.y + Math.sin(rayAngle) * distance;
+			
+			if (Math.floor(testY) >= mapsizeY || Math.floor(testY) < 0 || Math.floor(testX) >= mapsizeX || Math.floor(testX) < 0) {
+				distance += 0.033;
+			} else 
+			if (map[Math.floor(testY)][Math.floor(testX)] == 1) {
+				hit = true;
+			} else {
+			distance += 0.033;
+			}
+		}
+		if (hit == false) distance = maxDistance;
+		const height = Math.floor(rows / (distance + 0.1));
+		for (let row = 0; row < rows; row++) {
+			if (row < rows/2 - height/2) buffer[row][col] = ' ';
+			else if (row < rows/2 + height/2) buffer[row][col] = light[Math.floor((1-distance/maxDistance)*light.length)]; // wall
+			else buffer[row][col] = '░';
+		}
+	}
+
+	let fpsstring = String(currentFPS);
+	buffer[0][0] = fpsstring[0];
+	buffer[0][1] = fpsstring[1];
+
+
+	let dir = String(detectDirection(player.angle));
+
+	for (let i=0;i<11;i++){
+		for (let j=0;j<11;j++){
+			let ii = Math.floor(i+player.x-5.5);
+			let jj = Math.floor(j+player.y-5.5);
+			if (ii >= 0 && ii < mapsizeX && jj >= 0 && jj < mapsizeY){
+				switch(map[jj][ii]){
+					case 0: buffer[j][i] = ' '; break;
+					case 1: buffer[j][i] = '█'; break;
+					case 2: buffer[j][i] = '!'; break;
+					case 3: buffer[j][i] = '*'; break;
+				}
+			}
+			else buffer[j][i] = '█';
+		}
+		buffer[5][5] = '$';
+	}
+	if (dir != "     ") {
+		let cX = Math.floor(cols/2);
+		let cY = Math.floor(rows/2);
+		buffer[cY][cX-2] = '<';
+		buffer[cY][cX-1] = 'W';
+		buffer[cY][cX] = 'A';
+		buffer[cY][cX+1] = 'L';
+		buffer[cY][cX+2] = 'K';
+		buffer[cY][cX+3] = '>';
+	}
 
 	frame = buffer.map(row => row.join("")).join("\n");
 	screen.textContent = frame;
 	screen.textContent = frame;
 }
 
-function nextfree(){
-	for (let i=0;i<NUM_PARTICLES;i++){
-		if (particles[i].type == -1) return i;
-	}
-	return -1;
-}
-
+let justclicked = 0;
 window.addEventListener("mousedown", (e) => {
+	justclicked = 1;
   mcS = 1;
 });
 
@@ -196,24 +294,55 @@ window.addEventListener("mouseup", (e) => {
   mcS = 0;
 });
 
+
+let shmoovinX = player.x;
+let shmoovinY = player.y;
 let place = 0;
+let win = 0;
 function update(timestamp) {
   if (timestamp - lastTime >= frameDuration) {
 	currentFPS = 1000/(timestamp-lastTime);
     lastTime = timestamp;
-	if (mcS == 1){
-		if (place > 4){
-			place = 0;
-			let nf = nextfree();
-			if (nf != -1) particles[nf] = new Particle('■', cols/2, rows/2, -(cols/2 - mcX)/20.0, -(rows/2 - mcY)/20.0, 0, 0, 200, 1);
+	if (justclicked == 1 && shmoovinX == player.x && shmoovinY == player.y){
+		justclicked = 0;
+		const dir = detectDirection(player.angle);
+		if (dir == "right") shmoovinX = player.x + 1;
+		if (dir == "up   ") shmoovinY = player.y + 1;
+		if (dir == "left ") shmoovinX = player.x - 1;
+		if (dir == "down ") shmoovinY = player.y - 1;
+		if (shmoovinX < 0 || shmoovinX >= mapsizeX) {shmoovinX = player.x; playFail();} else
+		if (shmoovinY < 0 || shmoovinY >= mapsizeY) {shmoovinY = player.y; playFail();} else
+		if (map[Math.floor(shmoovinY)][Math.floor(shmoovinX)] == 1){
+			shmoovinX = player.x;
+			shmoovinY = player.y;
+			playFail();
 		}
-		else place++;
+		else{
+			if (dir != "     ")
+			playMove();
+		}
 	}
+	else{
+		player.x = (player.x + shmoovinX) / 2;
+		player.y = (player.y + shmoovinY) / 2;
+		if (Math.abs(player.x - shmoovinX) < 0.01) player.x = shmoovinX;
+		if (Math.abs(player.y - shmoovinY) < 0.01) player.y = shmoovinY;
+		if (player.x == path[path.length-1].x*2+1.5 && player.y == path[path.length-1].y*2+1.5){
+			playWin();
+			win = 1;
+		}
+	}
+	
 	resize();
 	physics();
     render();
   }
-  requestAnimationFrame(update);
+  if (win == 0)
+  	requestAnimationFrame(update);
+  else{
+	alert("YOU WON!");
+	location.reload();
+  }
 }
 
 requestAnimationFrame(update);

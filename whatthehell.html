@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>■</title>
+
+<style>
+html, body {
+	user-select: none; 
+  margin: 0;
+  height: 100%;
+  background: white;
+  display: flex;
+  align-items: center;   /* vertical centering */
+  justify-content: center; /* horizontal centering */
+}
+
+#screen {
+  font-family: monospace;
+  line-height: 1;
+  white-space: pre;
+  color: #000000;
+}
+</style>
+</head>
+<body>
+
+<pre id="screen"></pre>
+
+<audio id="noise0" src="sounds/hitHurt.wav"></audio>
+<audio id="noise1" src="sounds/hitHurt.wav"></audio>
+<audio id="noise2" src="sounds/hitHurt.wav"></audio>
+<audio id="noise3" src="sounds/hitHurt.wav"></audio>
+<audio id="noise4" src="sounds/hitHurt.wav"></audio>
+<audio id="noise5" src="sounds/hitHurt.wav"></audio>
+<audio id="noise6" src="sounds/hitHurt.wav"></audio>
+<audio id="noise7" src="sounds/hitHurt.wav"></audio>
+<audio id="noise8" src="sounds/hitHurt.wav"></audio>
+<audio id="noise9" src="sounds/hitHurt.wav"></audio>
+
+
+<script>
+const screen = document.getElementById("screen");
+
+let cols = 0;
+let rows = 0;
+let charWidth = 0;
+let charHeight = 0;
+let mcX = 0;
+let mcY = 0;
+let mcS = 0;
+let boing = 0;
+
+let lastTime = 0;
+const targetFPS = 60;
+const frameDuration = 1000 / targetFPS;
+let currentFPS = 0;
+let nextchannel = 0;
+
+function playNoise() {
+  const audio = document.getElementById("noise"+nextchannel);
+  audio.currentTime = 0; // start from the beginning
+  audio.play();
+	nextchannel = (nextchannel+1)%6;
+}
+
+function Particle(texture, x, y, dx, dy, ddx, ddy, lifetime, type) {
+  this.texture = texture;  // string or character representing the particle
+  this.x = x;              // position
+  this.y = y;
+  this.dx = dx;            // velocity
+  this.dy = dy;
+  this.ddx = ddx;          // acceleration
+  this.ddy = ddy;
+  this.lifetime = lifetime; // remaining lifetime in frames
+  this.type = type;
+}
+
+const NUM_PARTICLES = 1024;
+const particles = new Array(NUM_PARTICLES);
+
+for (let i = 0; i < NUM_PARTICLES; i++) {
+  particles[i] = new Particle(
+    ' ',
+    0, 0,
+    0, 0,
+    0, 0,
+    0,
+    -1
+  );
+}
+screen.addEventListener("mousemove", (e) => {
+  const rect = screen.getBoundingClientRect();
+  const x = e.clientX - rect.left; // x relative to the grid
+  const y = e.clientY - rect.top;  // y relative to the grid
+
+  mcX = Math.floor(x / charWidth);
+  mcY = Math.floor(y / charHeight);
+});
+
+function measureChar() {
+	const test = document.createElement("span");
+	test.textContent = "M";
+	test.style.display = "inline-block";
+	screen.appendChild(test);
+
+	const rect = test.getBoundingClientRect();
+	screen.removeChild(test);
+
+	return { width: rect.width, height: rect.height };
+}
+
+function resize() {
+	const charSize = measureChar();
+	charWidth = charSize.width;
+	charHeight = charSize.height;
+
+	// compute how many full chars fit
+	cols = Math.floor(window.innerWidth / charWidth);
+	rows = Math.floor(window.innerHeight / charHeight);
+}
+
+function physics(){
+	for (let i = 0;i<NUM_PARTICLES;i++){
+		if (particles[i].type != -1){
+			let prevX = Number(particles[i].x);
+			let prevY = Number(particles[i].y);
+			particles[i].dx += particles[i].ddx;
+			particles[i].dy += particles[i].ddy;
+			particles[i].x += particles[i].dx;
+			particles[i].y += particles[i].dy;
+			particles[i].lifetime--;
+			if (particles[i].lifetime == 0) particles[i].type = -1;
+
+			if (particles[i].x >= cols && prevX < cols || particles[i].x < 0 && prevX >= 0){
+				playNoise();
+				particles[i].dx = -(particles[i].dx);
+			}
+			if (particles[i].y < 0 && prevY >= 0 || particles[i].y >= rows && prevY < rows){
+				playNoise();
+				particles[i].dy = -(particles[i].dy);
+			}
+		}
+	}
+}
+
+function render() {
+  	let frame = "";
+
+
+	let buffer = Array.from({length: rows}, () => Array(cols).fill(' '));
+
+	let fpsstring = String(currentFPS);
+	buffer[0][0] = fpsstring[0];
+	buffer[0][1] = fpsstring[1];
+
+	let used = 0;
+	for (let i=0;i<NUM_PARTICLES;i++){
+		if (particles[i].type != -1){
+			if (particles[i].x >= 0 && particles[i].x < cols)
+			if (particles[i].y >= 0 && particles[i].y < rows)
+			buffer[Math.floor(particles[i].y)][Math.floor(particles[i].x)] = particles[i].texture;
+			used++;
+		}
+	}
+
+	let usedstring = String(used);
+	buffer[1][0] = usedstring[0];
+	buffer[1][1] = usedstring[1];
+	buffer[1][2] = usedstring[2];
+
+	if (mcX >= 0 && mcX < cols)
+	if (mcY >= 0 && mcY < rows){
+		buffer[mcY][mcX] = '%';
+	}
+
+	buffer[Math.floor(rows/2)][Math.floor(cols/2)] = '@';
+
+	frame = buffer.map(row => row.join("")).join("\n");
+	screen.textContent = frame;
+	screen.textContent = frame;
+}
+
+function nextfree(){
+	for (let i=0;i<NUM_PARTICLES;i++){
+		if (particles[i].type == -1) return i;
+	}
+	return -1;
+}
+
+window.addEventListener("mousedown", (e) => {
+  mcS = 1;
+});
+
+window.addEventListener("mouseup", (e) => {
+  mcS = 0;
+});
+
+let place = 0;
+function update(timestamp) {
+  if (timestamp - lastTime >= frameDuration) {
+	currentFPS = 1000/(timestamp-lastTime);
+    lastTime = timestamp;
+	if (mcS == 1){
+		if (place > 4){
+			place = 0;
+			let nf = nextfree();
+			if (nf != -1) particles[nf] = new Particle('■', cols/2, rows/2, -(cols/2 - mcX)/20.0, -(rows/2 - mcY)/20.0, 0, 0, 200, 1);
+		}
+		else place++;
+	}
+	resize();
+	physics();
+    render();
+  }
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+
+</body>
+</html>
